@@ -3,21 +3,30 @@ name: CI/CD con Docker
 on:
   push:
     branches: [main]
-  pull_request:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build test image (stage "test")
-        run: docker build --target test -t app-test:ci .
-      - name: Run tests in container
-        run: docker run --rm app-test:ci
+      - name: Construir imagen
+        run: docker build -t trabajoso-cicd:latest .
+      - name: Ejecutar pruebas
+        run: docker run --rm trabajoso-cicd:latest npm test
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - name: Simular despliegue
-        run: echo "🚀 Desplegando aplicación..."
+      - name: Desplegar contenedor en servidor (tu PC)
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            docker stop trabajoso-cicd || true
+            docker rm trabajoso-cicd || true
+            docker pull ghcr.io/sebastianportocarre/trabajoso-cicd:latest
+            docker run -d --name trabajoso-cicd -p 3000:3000 ghcr.io/sebastianportocarre/trabajoso-cicd:latest
+
